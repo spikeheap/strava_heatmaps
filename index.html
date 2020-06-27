@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>Leaflet Multi Polylines</title>
+      <link rel = "stylesheet" href = "node_modules/leaflet/dist/leaflet.css"/>
+      <script src = "node_modules/leaflet/dist/leaflet.js"></script>
+      <script src = "node_modules/polyline-encoded/Polyline.encoded.js"></script>
+      <script src = "node_modules/moment/min/moment.min.js"></script>
+   </head>
+   
+   <body>
+      <div id = "map" style = "width: 900px; height: 580px"></div>
+      <script>
+         // Creating map options
+         var mapOptions = {
+            center: [53.38648, -1.95701],
+            zoom: 10
+         }
+         // Creating a map object
+         var map = new L.map('map', mapOptions);
+         
+         // Creating a Layer object
+         var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+         
+         // Adding layer to the map
+         map.addLayer(layer);
+
+         fetch('ryan_sample_activities.json')
+          .then(response => response.json())
+          .then(activities => {
+            filtered_activities = activities.filter(activity => !!activity.map.summary_polyline)
+            
+            sortedDates = activities
+              .map(activity => activity.start_date)
+              .sort();
+
+            const oldestActivityDate = new Date(sortedDates[0]);
+
+            const newestActivityDate = new Date(sortedDates[sortedDates.length - 1]);
+
+            const windowSizeDays = 7
+            const windowStepDays = 1
+
+            var windowStart = oldestActivityDate
+            //windowStart = moment(oldestActivityDate).subtract(windowSizeDays, 'days').toDate()
+
+            nextWindowDate = windowStart            
+                 
+            const sleep = (milliseconds) => {
+              return new Promise(resolve => setTimeout(resolve, milliseconds))
+            }
+
+            const loopAndRender = async () => {
+              var withinDateRange = true
+              // var nextWindowDate = windowStart
+              while(withinDateRange){
+
+                clearMap()
+                renderActivityWindow(nextWindowDate, windowSizeDays)
+
+                nextWindowDate = moment(nextWindowDate).add(windowStepDays, 'days').toDate()
+                withinDateRange = nextWindowDate < newestActivityDate
+
+                await sleep(100)
+              }
+            }
+            loopAndRender()
+          });
+
+         //map.fitBounds(polyline.getBounds());
+        
+        function clearMap() {
+            for(i in map._layers) {
+                if(map._layers[i]._path != undefined) {
+                    try {
+                        map.removeLayer(map._layers[i]);
+                    }
+                    catch(e) {
+                        console.log("problem with " + e + map._layers[i]);
+                    }
+                }
+            }
+        }
+
+        function renderActivityWindow(windowStartDate, windowSizeDays){
+            // const windowEndDate  =new Date(oldestActivityDate)
+            const windowEndDate = moment(windowStartDate).add(windowSizeDays, 'days').toDate();
+
+            activities_window = filtered_activities.filter(activity => new Date(activity.start_date) >= windowStartDate && new Date(activity.start_date) <= windowEndDate
+            );
+
+            console.log("Start: ", windowStartDate)
+            console.log("End: ", windowEndDate)
+            console.log(activities_window)
+            renderActivities(activities_window)        
+        }
+
+        function renderActivities(activities){
+          activities
+            .map(activity => activity.map.summary_polyline)
+            .forEach(encoded_polyline => {
+              var polyline = L.Polyline.fromEncoded(encoded_polyline).addTo(map);
+          })
+        }
+      </script>
+   </body>
+   
+</html>
