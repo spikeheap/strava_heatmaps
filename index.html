@@ -9,63 +9,73 @@
    </head>
    
    <body>
-      <div id = "map" style = "width: 900px; height: 580px"></div>
+      <div id = "map" style = "width: 1400px; height: 900px"></div>
       <script>
          // Creating map options
-         var mapOptions = {
+         const mapOptions = {
+            // Sheffield level
+            // zoom: 11,
+            // center: [53.4, -1.54],
+
+            // UK level
+            zoom: 7,
             center: [53.38648, -1.95701],
-            zoom: 10
+
+            // Europe level
+            // zoom: 5.5,
+            // center: [50.38648, 1],
          }
          // Creating a map object
-         var map = new L.map('map', mapOptions);
+         const map = new L.map('map', mapOptions);
          
          // Creating a Layer object
-         var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+         const layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
          
          // Adding layer to the map
          map.addLayer(layer);
 
-         fetch('ryan_sample_activities.json')
-          .then(response => response.json())
-          .then(activities => {
-            filtered_activities = activities.filter(activity => !!activity.map.summary_polyline)
+        function* timespan(start, step,  until) {
+          while(start <= until) {
+            yield start;
+
+            start = moment(start).add(step, 'days').toDate()
+          }
+        }
+
+        ;(async () => {
+          const res = await fetch('ryan_sample_activities.json');
+          const activities = await res.json();
+
+          filtered_activities = activities.filter(activity => !!activity.map.summary_polyline)
             
-            sortedDates = activities
-              .map(activity => activity.start_date)
-              .sort();
+          sortedDates = activities
+            .map(activity => activity.start_date)
+            .sort();
 
-            const oldestActivityDate = new Date(sortedDates[0]);
+          const oldestActivityDate = new Date(sortedDates[0]);
 
-            const newestActivityDate = new Date(sortedDates[sortedDates.length - 1]);
+          const newestActivityDate = new Date(sortedDates[sortedDates.length - 1]);
 
-            const windowSizeDays = 7
-            const windowStepDays = 1
+          const windowSizeDays = 90
+          const windowStepDays = 5
+          const sleepMilliseconds = 25
 
-            var windowStart = oldestActivityDate
-            //windowStart = moment(oldestActivityDate).subtract(windowSizeDays, 'days').toDate()
+          var windowStart = oldestActivityDate
+          //windowStart = moment(oldestActivityDate).subtract(windowSizeDays, 'days').toDate()
 
-            nextWindowDate = windowStart            
-                 
-            const sleep = (milliseconds) => {
-              return new Promise(resolve => setTimeout(resolve, milliseconds))
-            }
+          nextWindowDate = windowStart            
+               
+          
+          const sleep = (milliseconds) => new Promise(resolve => setTimeout(resolve, milliseconds))
+         
+          for(const time of timespan(oldestActivityDate, windowStepDays, newestActivityDate)){
 
-            const loopAndRender = async () => {
-              var withinDateRange = true
-              // var nextWindowDate = windowStart
-              while(withinDateRange){
+            clearMap()
+            renderActivityWindow(time, windowSizeDays)
 
-                clearMap()
-                renderActivityWindow(nextWindowDate, windowSizeDays)
-
-                nextWindowDate = moment(nextWindowDate).add(windowStepDays, 'days').toDate()
-                withinDateRange = nextWindowDate < newestActivityDate
-
-                await sleep(100)
-              }
-            }
-            loopAndRender()
-          });
+            await sleep(sleepMilliseconds);
+          }
+         })();
 
          //map.fitBounds(polyline.getBounds());
         
@@ -89,9 +99,9 @@
             activities_window = filtered_activities.filter(activity => new Date(activity.start_date) >= windowStartDate && new Date(activity.start_date) <= windowEndDate
             );
 
-            console.log("Start: ", windowStartDate)
-            console.log("End: ", windowEndDate)
-            console.log(activities_window)
+            // console.log("Start: ", windowStartDate)
+            // console.log("End: ", windowEndDate)
+            // console.log(activities_window)
             renderActivities(activities_window)        
         }
 
@@ -99,7 +109,7 @@
           activities
             .map(activity => activity.map.summary_polyline)
             .forEach(encoded_polyline => {
-              var polyline = L.Polyline.fromEncoded(encoded_polyline).addTo(map);
+              var polyline = L.Polyline.fromEncoded(encoded_polyline, {weight: 6.5, opacity: 0.9}).addTo(map);
           })
         }
       </script>
