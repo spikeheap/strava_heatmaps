@@ -43,22 +43,22 @@
         }
 
         ;(async () => {
-          const res = await fetch('ryan_sample_activities.json');
-          const activities = await res.json();
+          const windowSizeDays = 90
+          const windowStepDays = 5
+          const sleepMilliseconds = 25
+
+
+          const response = await fetch('ryan_sample_activities.json');
+          const activities = await response.json();
 
           filtered_activities = activities.filter(activity => !!activity.map.summary_polyline)
             
-          sortedDates = activities
+          sortedDates = filtered_activities
             .map(activity => activity.start_date)
             .sort();
 
           const oldestActivityDate = new Date(sortedDates[0]);
-
           const newestActivityDate = new Date(sortedDates[sortedDates.length - 1]);
-
-          const windowSizeDays = 90
-          const windowStepDays = 5
-          const sleepMilliseconds = 25
 
           var windowStart = oldestActivityDate
           //windowStart = moment(oldestActivityDate).subtract(windowSizeDays, 'days').toDate()
@@ -79,6 +79,7 @@
 
          //map.fitBounds(polyline.getBounds());
         
+        // From https://stackoverflow.com/questions/14585688/clear-all-polylines-from-leaflet-map
         function clearMap() {
             for(i in map._layers) {
                 if(map._layers[i]._path != undefined) {
